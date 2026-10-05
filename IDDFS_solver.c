@@ -76,28 +76,6 @@ static uint32_t rank_state(const state_t *state)
     return p * ORIENTATIONS + o;
 }
 
-/*@ requires \valid(state); requires rank < STATES; assigns *state; */
-static void unrank_state(uint32_t rank, state_t *state)
-{
-    uint8_t available[CUBIES] = {0, 1, 2, 3, 4, 5, 6};
-    uint32_t p = rank / ORIENTATIONS, o = rank % ORIENTATIONS, f = 720;
-    uint8_t sum = 0;
-    for (uint8_t i = 0; i < CUBIES; ++i) {
-        uint8_t q = (uint8_t) (p / f);
-        p %= f;
-        state->p[i] = available[q];
-        for (uint8_t j = q; j + 1U < CUBIES - i; ++j)
-            available[j] = available[j + 1U];
-        if (i < 5)
-            f /= 6U - i;
-    }
-    for (uint8_t i = 6; i-- > 0;) {
-        state->o[i] = (uint8_t) (o % 3U);
-        sum = (uint8_t) (sum + state->o[i]);
-        o /= 3U;
-    }
-    state->o[6] = (uint8_t) ((3U - sum % 3U) % 3U);
-}
 
 static int valid(const state_t *state)
 {
