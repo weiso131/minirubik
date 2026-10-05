@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lookup_form.h"
+
 enum {
     CUBIES = 7,
     PERMUTATIONS = 5040,
@@ -114,19 +116,47 @@ static int valid(const state_t *state)
     return sum % 3U == 0;
 }
 
+static uint8_t search_five_step(uint32_t rank)
+{
+    int l = 0, r = FIVE_STEP_NUM + 1;
+
+    while (r - l > 1) {
+        int lr = (l + r) >> 1;
+        if (five_step_ranks[lr] > rank)
+            r = lr;
+        else
+            l = lr;
+    }
+    if (five_step_ranks[l] == rank)
+        goto FIND;
+    
+    return 0;
+
+FIND:
+    return get_five_step_distance(l);
+        
+}
+
 static void solve(state_t *state)
 {
     stack_entry_t stack[12];
     uint8_t sp;
     const state_t solved = {{0, 1, 2, 3, 4, 5, 6}, {0}};
 
-    for (uint8_t allow_step = 1;allow_step <= 11;allow_step++) {
+    uint8_t in_five_step = search_five_step(rank_state(state));
+    if (in_five_step) {
+        printf("%d\n", in_five_step);
+        return;
+    }
+
+    for (uint8_t allow_step = 1;allow_step <= 6;allow_step++) {
         sp = 0;
         stack[sp] = (stack_entry_t) {*state, 0xFF, 0};
         while (!(sp == 0 && stack[sp].next_step == 0xFF)) {
             if (sp == allow_step) {
-                if (!memcmp(&solved, &stack[sp].now_state, sizeof solved)) {
-                    printf("%d\n", allow_step);
+                uint8_t in_five_step = search_five_step(rank_state(&stack[sp].now_state));
+                if (in_five_step) {
+                    printf("%d\n", allow_step + in_five_step);
                     return;
                 }
             pop_stack:
