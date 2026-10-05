@@ -129,16 +129,20 @@ static void solve(state_t *state)
                     printf("%d\n", allow_step);
                     return;
                 }
-                
+            pop_stack:
                 do {
                     sp--;
                     stack[sp].next_step = next_turn_form[stack[sp].next_step];
                 } while (sp > 0 && stack[sp].next_step == 0xFF);
 
             } else {
+                if (get_face(stack[sp].next_step) == get_face(stack[sp].step))
+                    stack[sp].next_step = next_turn_form[stack[sp].next_step];
                 uint8_t next_step = stack[sp].next_step;
-
                 
+                if (next_step == 0xFF)
+                    goto pop_stack;
+
                 stack[sp + 1].now_state = apply_move(stack[sp].now_state, stack[sp].next_step);
                 stack[sp + 1].step = next_step;
                 stack[sp + 1].next_step = 0;
