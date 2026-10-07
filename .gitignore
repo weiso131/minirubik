@@ -6,3 +6,6 @@ mini
 IDDFS_solver
 lookup_form_generator
 god_test
+IDDFS_solver.elf
+.rv32_state
+Ripes-*.AppImage

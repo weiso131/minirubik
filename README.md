@@ -89,6 +89,50 @@ states, and `solve us` is `run us` minus that. These are rough figures for
 comparing changes, not a benchmark: short searches sit inside the noise and
 can come out slightly negative.
 
+### Running on RV32I with Ripes
+
+`IDDFS_solver.c` also builds as a bare-metal RV32I program, with no C library
+and no multiply or divide. It needs `riscv-none-elf-gcc` on the `PATH`:
+
+```sh
+make IDDFS_solver.elf                            # state 21345671111111
+make IDDFS_solver.elf RV32_STATE=76543213113131  # any other state
+```
+
+There is no command line on the target, so the state is assembled into the
+image as a string in `rv32/start.S`; `RV32_STATE` sets it, and changing it
+rebuilds the image. `rv32/link.ld` lays the image out, including a fixed
+512-byte stack, inside the assignment's 128 KiB budget for everything that is
+not code.
+
+`ripes_test.sh` runs an image on [Ripes](https://github.com/mortbopet/Ripes)
+in command-line mode and reports what it cost:
+
+```sh
+./ripes_test.sh IDDFS_solver.elf                 # Ripes-*.AppImage in this directory
+./ripes_test.sh IDDFS_solver.elf /path/to/Ripes  # some other Ripes
+PROC=RV32_5S ./ripes_test.sh IDDFS_solver.elf    # another processor model
+./ripes_test.sh --help
+```
+
+```
+image:                IDDFS_solver.elf on RV32_ISS
+output:               R D R B2 R B D2 B D R B'
+exit code:            0
+instructions retired: 10549852
+.text:                   1956 bytes
+.rodata:                  216 bytes
+.data:                  55025 bytes
+.bss:                       0 bytes
+.stack:                   512 bytes
+total:                  57709 bytes
+```
+
+The instruction count is Ripes's `--iret`, and the sizes are read from the
+image's sections. Ripes runs with no ISA extensions enabled, but it does not
+reject a `mul` inside an ELF image; that is enforced when the image is built,
+by `-march=rv32i` and by linking without libgcc.
+
 ### Reading the 14-digit input
 
 The program receives one 14-digit code with no spaces. For explanation, split

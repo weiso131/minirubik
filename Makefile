@@ -1,6 +1,11 @@
 CC ?= cc
 CFLAGS ?= -O3 -std=c99 -Wall -Wextra -Wpedantic
 FRAMA_C ?= frama-c
+# Bare-metal RV32I build of IDDFS_solver, with the reference flags from the
+# assignment. RV32_STATE is the cube state assembled into the image.
+RV32_CC ?= riscv-none-elf-gcc
+RV32_CFLAGS ?= -O2 -march=rv32i -mabi=ilp32
+RV32_STATE ?= 21345671111111
 CLANG_FORMAT := $(shell command -v clang-format-20 2>/dev/null || \
 	command -v clang-format 2>/dev/null)
 C_SOURCES := $(wildcard *.c *.h)
@@ -12,7 +17,7 @@ VECTORS := tests/solutions.txt
 INVALID_STATES := 1234567111111 123456711111111 02345671111111 82345671111111 \
 	12345671111110 12345671111114 1234567111111a 11345671111111 12345671111112
 
-.PHONY: all check god_check prove clean indent
+.PHONY: all check god_check prove clean indent FORCE
 
 all: solver mini IDDFS_solver god_test
 
@@ -30,6 +35,20 @@ lookup_form_generator: lookup_form_generator.c
 
 IDDFS_solver: IDDFS_solver.c lookup_form.h lookup_form_generator
 	./lookup_form_generator | $(CC) $(CFLAGS) IDDFS_solver.c -x c - -o $@
+
+# Holds the state the RV32I images were last built for, and is rewritten only
+# when RV32_STATE changes, so that changing it rebuilds them.
+.rv32_state: FORCE
+	@echo '$(RV32_STATE)' | cmp -s - $@ || echo '$(RV32_STATE)' >$@
+
+# Nothing is linked in besides rv32/start.S: no libc, and no libgcc either,
+# so a call to a compiler helper such as __mulsi3 or memcpy fails the link
+# instead of slipping in.
+IDDFS_solver.elf: IDDFS_solver.c lookup_form.h lookup_form_generator \
+		rv32/start.S rv32/link.ld .rv32_state
+	./lookup_form_generator | $(RV32_CC) $(RV32_CFLAGS) -ffreestanding \
+		-nostdlib -static -DRIPES -DSTATE='"$(RV32_STATE)"' -T rv32/link.ld \
+		rv32/start.S IDDFS_solver.c -x c - -o $@
 
 god_test: god_test.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -112,4 +131,5 @@ endif
 	$(CLANG_FORMAT) -i $(C_SOURCES)
 
 clean:
-	$(RM) solver mini IDDFS_solver lookup_form_generator god_test
+	$(RM) solver mini IDDFS_solver lookup_form_generator god_test \
+		IDDFS_solver.elf .rv32_state

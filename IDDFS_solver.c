@@ -1,6 +1,46 @@
+#include "lookup_form.h"
+
+/* Everything that needs the C library is confined to this block. With RIPES
+ * defined the program is built without one and prints through the Ripes
+ * environment calls instead.
+ */
+#ifdef RIPES
+static void print_string(const char *string)
+{
+    register const char *a0 __asm__("a0") = string;
+    register int a7 __asm__("a7") = 4; /* PrintStr */
+    __asm__ volatile("ecall" : : "r"(a0), "r"(a7) : "memory");
+}
+
+static void print_usage(const char *program)
+{
+    (void) program;
+    print_string("usage: IDDFS_solver PPPPPPPOOOOOOO\n");
+}
+
+/* A Ripes environment call has no way to report a failed write. */
+static int output_failed(void)
+{
+    return 0;
+}
+#else
 #include <stdio.h>
 
-#include "lookup_form.h"
+static void print_string(const char *string)
+{
+    fputs(string, stdout);
+}
+
+static void print_usage(const char *program)
+{
+    fprintf(stderr, "usage: %s PPPPPPPOOOOOOO\n", program);
+}
+
+static int output_failed(void)
+{
+    return fflush(stdout) != 0 || ferror(stdout);
+}
+#endif
 
 enum {
     CUBIES = 7,
@@ -153,18 +193,20 @@ static void print_solution(const stack_entry_t *stack, uint8_t sp)
     state_copy(&state, &stack[sp].now_state);
 
     for (uint8_t i = 1; i <= sp; ++i) {
-        printf("%s%s", separator, step_names[stack[i].step]);
+        print_string(separator);
+        print_string(step_names[stack[i].step]);
         separator = " ";
     }
     for (uint32_t rank = rank_state(&state); rank; rank = rank_state(&state)) {
         uint8_t step = get_five_step_first_move(search_five_step(rank));
-        printf("%s%s", separator, step_names[step]);
+        print_string(separator);
+        print_string(step_names[step]);
         separator = " ";
         state_t previous;
         state_copy(&previous, &state);
         apply_move(&state, &previous, step);
     }
-    printf("\n");
+    print_string("\n");
 }
 
 static void solve(state_t *state)
@@ -224,19 +266,13 @@ static int parse_state(const char *input, state_t *state)
     return input[14] == '\0' && valid(state);
 }
 
-static int output_failed(void)
-{
-    return fflush(stdout) != 0 || ferror(stdout);
-}
-
 int main(int argc, char **argv)
 {
     state_t state;
     uint8_t diameter;
     if (argc != 2 || !parse_state(argv[1], &state)) {
         /* C99 5.1.2.2.1 lets argv[0] be null when argc is 0. */
-        fprintf(stderr, "usage: %s PPPPPPPOOOOOOO\n",
-                argc > 0 && argv[0] ? argv[0] : "solver");
+        print_usage(argc > 0 && argv[0] ? argv[0] : "solver");
         return 2;
     }
     
