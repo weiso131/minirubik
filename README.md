@@ -51,6 +51,44 @@ eight times the runtime and three times the memory for its brevity.
 The 14-digit argument describes the scramble and the printed line is the
 solution. Both formats are explained below.
 
+### Checking a solver against every state
+
+`god_test` runs a solver executable on every state and checks each answer
+against a breadth-first table of optimal move counts:
+
+```sh
+./god_test SOLVER [STEP [JOBS]]
+make god_check                 # ./god_test ./IDDFS_solver, all states
+make god_check GOD_STEP=1000   # every 1000th state, well under a second
+```
+
+- `SOLVER` is run as `SOLVER PPPPPPPOOOOOOO`, once per tested state. It must
+  exit with status 0 and print moves that solve the state in the optimal
+  number of moves; any optimal solution is accepted.
+- `STEP` tests only the ranks divisible by `STEP`. The default, 1, covers all
+  3,674,160 states.
+- `JOBS` is the number of worker processes, by default one per online
+  processor. Each worker takes its own share of the ranks and reports its
+  totals to the parent through a pipe when it is done.
+
+Up to ten failures per worker are printed to stderr in full, and the exit
+status is 1 if any state failed. The summary also times the runs, grouped by
+optimal move count:
+
+```
+moves   states    run us  solve us
+    9    18870     527.9     139.7
+   10     6330     859.2     471.1
+   11       29    2439.5    2051.3
+startup only: 388.2 us mean over 2300 runs
+```
+
+`run us` is the mean wall time of one whole solver process. `startup only` is
+the same measurement on an input the solver rejects, sampled once every 16
+states, and `solve us` is `run us` minus that. These are rough figures for
+comparing changes, not a benchmark: short searches sit inside the noise and
+can come out slightly negative.
+
 ### Reading the 14-digit input
 
 The program receives one 14-digit code with no spaces. For explanation, split

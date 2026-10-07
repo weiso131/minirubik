@@ -12,9 +12,9 @@ VECTORS := tests/solutions.txt
 INVALID_STATES := 1234567111111 123456711111111 02345671111111 82345671111111 \
 	12345671111110 12345671111114 1234567111111a 11345671111111 12345671111112
 
-.PHONY: all check prove clean indent
+.PHONY: all check god_check prove clean indent
 
-all: solver mini IDDFS_solver
+all: solver mini IDDFS_solver god_test
 
 solver: solver.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -30,6 +30,15 @@ lookup_form_generator: lookup_form_generator.c
 
 IDDFS_solver: IDDFS_solver.c lookup_form.h lookup_form_generator
 	./lookup_form_generator | $(CC) $(CFLAGS) IDDFS_solver.c -x c - -o $@
+
+god_test: god_test.c
+	$(CC) $(CFLAGS) $< -o $@
+
+# Check IDDFS_solver against the BFS distance of every state. GOD_STEP=n
+# tests only every n-th rank; GOD_JOBS sets the worker count.
+GOD_STEP ?= 1
+god_check: god_test IDDFS_solver
+	./god_test ./IDDFS_solver $(GOD_STEP) $(GOD_JOBS)
 
 check: solver mini $(VECTORS)
 	./solver --self-test
@@ -103,4 +112,4 @@ endif
 	$(CLANG_FORMAT) -i $(C_SOURCES)
 
 clean:
-	$(RM) solver mini IDDFS_solver lookup_form_generator
+	$(RM) solver mini IDDFS_solver lookup_form_generator god_test
