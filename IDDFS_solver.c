@@ -44,24 +44,37 @@ static const uint8_t twist[3][CUBIES] = {
     {0, 0, 0, 0, 0, 0, 0},
 };
 
-static state_t quarter_turn(state_t state, uint8_t face)
+/* States are never assigned as whole structs: the compiler turns that into
+ * a call to memcpy, and a copy of known length is cheaper spelled out.
+ */
+static void state_copy(state_t *to, const state_t *from)
 {
-    state_t result;
     for (uint8_t i = 0; i < CUBIES; ++i) {
-        uint8_t from = source[face][i];
-        result.p[i] = state.p[from];
-        result.o[i] = mod3_form[state.o[from] + twist[face][i]];
+        to->p[i] = from->p[i];
+        to->o[i] = from->o[i];
     }
-    return result;
 }
 
-static state_t apply_move(state_t state, uint8_t move)
+/* to and from must be different states. */
+static void quarter_turn(state_t *to, const state_t *from, uint8_t face)
 {
-    
+    for (uint8_t i = 0; i < CUBIES; ++i) {
+        uint8_t cubie = source[face][i];
+        to->p[i] = from->p[cubie];
+        to->o[i] = mod3_form[from->o[cubie] + twist[face][i]];
+    }
+}
+
+/* to and from must be different states. */
+static void apply_move(state_t *to, const state_t *from, uint8_t move)
+{
     uint8_t turns = get_turn(move), face = get_face(move);
-    for (uint8_t i = 0; i <= turns; ++i)
-        state = quarter_turn(state, face);
-    return state;
+    quarter_turn(to, from, face);
+    for (uint8_t i = 0; i < turns; ++i) {
+        state_t previous;
+        state_copy(&previous, to);
+        quarter_turn(to, &previous, face);
+    }
 }
 
 static uint32_t rank_state(const state_t *state)
@@ -134,8 +147,10 @@ static int search_five_step(uint32_t rank)
  */
 static void print_solution(const stack_entry_t *stack, uint8_t sp)
 {
-    state_t state = stack[sp].now_state;
+    state_t state;
     const char *separator = "";
+
+    state_copy(&state, &stack[sp].now_state);
 
     for (uint8_t i = 1; i <= sp; ++i) {
         printf("%s%s", separator, step_names[stack[i].step]);
@@ -145,7 +160,9 @@ static void print_solution(const stack_entry_t *stack, uint8_t sp)
         uint8_t step = get_five_step_first_move(search_five_step(rank));
         printf("%s%s", separator, step_names[step]);
         separator = " ";
-        state = apply_move(state, step);
+        state_t previous;
+        state_copy(&previous, &state);
+        apply_move(&state, &previous, step);
     }
     printf("\n");
 }
@@ -156,7 +173,7 @@ static void solve(state_t *state)
     uint8_t sp;
     const state_t solved = {{0, 1, 2, 3, 4, 5, 6}, {0}};
 
-    stack[0] = (stack_entry_t) {*state, 0xFF, 0};
+    state_copy(&stack[0].now_state, state);
     if (search_five_step(rank_state(state)) >= 0) {
         print_solution(stack, 0);
         return;
@@ -164,7 +181,8 @@ static void solve(state_t *state)
 
     for (uint8_t allow_step = 1;allow_step <= 6;allow_step++) {
         sp = 0;
-        stack[sp] = (stack_entry_t) {*state, 0xFF, 0};
+        stack[sp].step = 0xFF;
+        stack[sp].next_step = 0;
         while (!(sp == 0 && stack[sp].next_step == 0xFF)) {
             if (sp == allow_step) {
                 if (search_five_step(rank_state(&stack[sp].now_state)) >= 0) {
@@ -185,7 +203,7 @@ static void solve(state_t *state)
                 if (next_step == 0xFF)
                     goto pop_stack;
 
-                stack[sp + 1].now_state = apply_move(stack[sp].now_state, stack[sp].next_step);
+                apply_move(&stack[sp + 1].now_state, &stack[sp].now_state, next_step);
                 stack[sp + 1].step = next_step;
                 stack[sp + 1].next_step = 0;
                 sp++;
