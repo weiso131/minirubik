@@ -20,6 +20,8 @@ typedef struct {
 
 char next_turn_form[] = {0x1, 0x2, 0x4, 0xFF, 0x5, 0x6, 0x8, 0xFF, 0x9, 0xa, 0xFF};
 
+uint8_t mod3_form[] = {0, 1, 2, 0, 1};
+
 typedef struct {
     state_t now_state;
     uint8_t step;
@@ -47,7 +49,7 @@ static state_t quarter_turn(state_t state, uint8_t face)
     for (uint8_t i = 0; i < CUBIES; ++i) {
         uint8_t from = source[face][i];
         result.p[i] = state.p[from];
-        result.o[i] = (uint8_t) ((state.o[from] + twist[face][i]) % 3U);
+        result.o[i] = mod3_form[state.o[from] + twist[face][i]];
     }
     return result;
 }
@@ -86,9 +88,9 @@ static int valid(const state_t *state)
         for (uint8_t j = 0; j < i; ++j)
             if (state->p[j] == state->p[i])
                 return 0;
-        sum = (uint8_t) (sum + state->o[i]);
+        sum = mod3_form[sum + state->o[i]];
     }
-    return sum % 3U == 0;
+    return sum == 0;
 }
 
 static uint8_t search_five_step(uint32_t rank)
