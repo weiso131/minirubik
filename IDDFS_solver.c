@@ -159,11 +159,12 @@ static void solve(state_t *state)
 
 static int parse_state(const char *input, state_t *state)
 {
-    for (int i = 0; i < 14; ++i) {
-        int limit = i < 7 ? 7 : 3;
-        if (input[i] < '1' || input[i] > '0' + limit)
+    for (int i = 0;i < 7;++i) {
+        if (input[i] < '1' || input[i] > '7' || \
+            input[i + 7] < '1' || input[i + 7] > '3')
             return 0;
-        (i < 7 ? state->p : state->o)[i % 7] = (uint8_t) (input[i] - '1');
+        state->p[i] = (uint8_t) (input[i] - '1');
+        state->o[i] = (uint8_t) (input[i + 7] - '1');
     }
     return input[14] == '\0' && valid(state);
 }
