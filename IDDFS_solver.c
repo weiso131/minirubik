@@ -66,16 +66,33 @@ static state_t apply_move(state_t state, uint8_t move)
 static uint32_t rank_state(const state_t *state)
 {
     uint32_t p = 0, o = 0;
-    for (uint8_t i = 0; i < CUBIES; ++i) {
-        uint8_t smaller = 0;
-        for (uint8_t j = (uint8_t) (i + 1U); j < CUBIES; ++j)
-            if (state->p[j] < state->p[i])
-                ++smaller;
-        p = p * (CUBIES - i) + smaller;
-    }
+    for (uint8_t i = (uint8_t) 1U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[0];
+    p = (p << 1) + (p << 2);
+
+    for (uint8_t i = (uint8_t) 2U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[1];
+    p = p + (p << 2);
+
+    for (uint8_t i = (uint8_t) 3U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[2];
+    p = (p << 2);
+
+    for (uint8_t i = (uint8_t) 4U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[3];
+    p = p + (p << 1);
+
+    for (uint8_t i = (uint8_t) 5U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[4];
+    p = p << 1;
+
+    for (uint8_t i = (uint8_t) 6U; i < CUBIES; ++i)
+        p += state->p[i] < state->p[5];
+
+    
     for (uint8_t i = 0; i < 6; ++i)
-        o = o * 3U + state->o[i];
-    return p * ORIENTATIONS + o;
+        o = (o + (o << 1)) + state->o[i];
+    return (p + (p << 3) + (p << 4) + (p << 6) + (p << 7) + (p << 9)) + o;
 }
 
 
