@@ -28,8 +28,9 @@ typedef struct {
     uint8_t next_step;
 } stack_entry_t;
 
-static const char *const move_names[MOVES] = {"R",  "R2", "R'", "B", "B2",
-                                              "B'", "D",  "D2", "D'"};
+/* Indexed by step (face | turn << 2); 3 and 7 are not steps. */
+static const char *const step_names[] = {"R",  "B",  "D",  "", "R2", "B2",
+                                         "D2", "",   "R'", "B'", "D'"};
 static const uint8_t inverse_move[MOVES] = {2, 1, 0, 5, 4, 3, 8, 7, 6};
 /* Each destination takes a cubie from source[face][destination]. */
 static const uint8_t source[3][CUBIES] = {
@@ -110,9 +111,10 @@ static int valid(const state_t *state)
     return sum == 0;
 }
 
-static uint8_t search_five_step(uint32_t rank)
+/* Index of rank in five_step_ranks, or -1 if it is more than 5 moves away. */
+static int search_five_step(uint32_t rank)
 {
-    int l = 0, r = FIVE_STEP_NUM + 1;
+    int l = 0, r = FIVE_STEP_NUM;
 
     while (r - l > 1) {
         int lr = (l + r) >> 1;
@@ -122,13 +124,30 @@ static uint8_t search_five_step(uint32_t rank)
             l = lr;
     }
     if (five_step_ranks[l] == rank)
-        goto FIND;
-    
-    return 0;
+        return l;
 
-FIND:
-    return get_five_step_distance(l);
-        
+    return -1;
+}
+
+/* Print the steps on stack[1..sp], then follow five_step_first_move from
+ * stack[sp].now_state, which must be in the table, down to the solved state.
+ */
+static void print_solution(const stack_entry_t *stack, uint8_t sp)
+{
+    state_t state = stack[sp].now_state;
+    const char *separator = "";
+
+    for (uint8_t i = 1; i <= sp; ++i) {
+        printf("%s%s", separator, step_names[stack[i].step]);
+        separator = " ";
+    }
+    for (uint32_t rank = rank_state(&state); rank; rank = rank_state(&state)) {
+        uint8_t step = get_five_step_first_move(search_five_step(rank));
+        printf("%s%s", separator, step_names[step]);
+        separator = " ";
+        state = apply_move(state, step);
+    }
+    printf("\n");
 }
 
 static void solve(state_t *state)
@@ -137,9 +156,9 @@ static void solve(state_t *state)
     uint8_t sp;
     const state_t solved = {{0, 1, 2, 3, 4, 5, 6}, {0}};
 
-    uint8_t in_five_step = search_five_step(rank_state(state));
-    if (in_five_step) {
-        printf("%d\n", in_five_step);
+    stack[0] = (stack_entry_t) {*state, 0xFF, 0};
+    if (search_five_step(rank_state(state)) >= 0) {
+        print_solution(stack, 0);
         return;
     }
 
@@ -148,9 +167,8 @@ static void solve(state_t *state)
         stack[sp] = (stack_entry_t) {*state, 0xFF, 0};
         while (!(sp == 0 && stack[sp].next_step == 0xFF)) {
             if (sp == allow_step) {
-                uint8_t in_five_step = search_five_step(rank_state(&stack[sp].now_state));
-                if (in_five_step) {
-                    printf("%d\n", allow_step + in_five_step);
+                if (search_five_step(rank_state(&stack[sp].now_state)) >= 0) {
+                    print_solution(stack, sp);
                     return;
                 }
             pop_stack:

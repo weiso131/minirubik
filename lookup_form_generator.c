@@ -305,7 +305,6 @@ int main(int argc, char **argv)
 
     uint8_t *table = build_table(&diameter);
     
-    uint8_t *step_cnt_table = calloc(6112, sizeof(uint8_t));
     uint8_t *move_table = calloc(6112, sizeof(uint8_t));
 
     int find_cnt = 0;
@@ -317,28 +316,26 @@ int main(int argc, char **argv)
         if (!valid(&state)) continue;
 
         int step_cnt = 0;
-
+        uint8_t first_move = 0;
         for (uint32_t rank = rank_state(&state); rank; rank = rank_state(&state)) {
-            step_cnt++;
             uint8_t move = table[rank];
+            /* Stored in IDDFS_solver's encoding: face | turn << 2. */
+            if (!step_cnt)
+                first_move = (uint8_t) (move / 3U | (move % 3U) << 2);
             state = apply_move(state, move);
+            step_cnt++;
         }
         if (step_cnt <= 5) {
             printf("0x%x, ", i);
-            step_cnt_table[find_cnt >> 1] |= step_cnt << (4 * (find_cnt & 1));
+            move_table[find_cnt >> 1] |= first_move << (4 * (find_cnt & 1));
             find_cnt++;
-            if (find_cnt % 10 == 0)
-                printf("\n");
         }   
         
         
     }
-    printf("};\n\nuint8_t five_step_distance[] = {");
-    for (int i = 0;i < 6112;i++) {
-        if ((i + 1) % 20 == 0)
-            printf("\n");
-        printf("0x%x, ", step_cnt_table[i]);
-    }
+    printf("};\n\nuint8_t five_step_first_move[] = {");
+    for (int i = 0;i < 6112;i++)
+        printf("0x%x, ", move_table[i]);
     printf("};\n");
 
     free(table);
