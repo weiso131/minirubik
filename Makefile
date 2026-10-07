@@ -14,13 +14,22 @@ INVALID_STATES := 1234567111111 123456711111111 02345671111111 82345671111111 \
 
 .PHONY: all check prove clean indent
 
-all: solver mini
+all: solver mini IDDFS_solver
 
 solver: solver.c
 	$(CC) $(CFLAGS) $< -o $@
 
 mini: mini.c
 	$(CC) $(CFLAGS) $< -o $@
+
+# lookup_form_generator runs a BFS over every 2x2x2 state and prints the
+# distance <= 5 table as C source. It is piped straight into the compiler, so
+# the table never exists as a file.
+lookup_form_generator: lookup_form_generator.c
+	$(CC) $(CFLAGS) $< -o $@
+
+IDDFS_solver: IDDFS_solver.c lookup_form.h lookup_form_generator
+	./lookup_form_generator | $(CC) $(CFLAGS) IDDFS_solver.c -x c - -o $@
 
 check: solver mini $(VECTORS)
 	./solver --self-test
@@ -94,4 +103,4 @@ endif
 	$(CLANG_FORMAT) -i $(C_SOURCES)
 
 clean:
-	$(RM) solver mini
+	$(RM) solver mini IDDFS_solver lookup_form_generator
