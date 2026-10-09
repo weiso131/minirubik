@@ -50,9 +50,15 @@ enum {
     MOVES = 9
 };
 
+/* Padded to 16 bytes and word aligned so that a state is copied as four
+ * words. p[7] and o[7] are never read as cubies.
+ */
 typedef struct {
-    uint8_t p[CUBIES], o[CUBIES];
-} state_t;
+    uint8_t p[CUBIES + 1], o[CUBIES + 1];
+} __attribute__((aligned(4))) state_t;
+
+/* A word that may alias the bytes of a state_t. */
+typedef uint32_t __attribute__((may_alias)) state_word_t;
 
 #define get_face(step) (step & 0x3)
 
@@ -89,10 +95,10 @@ static const uint8_t twist[3][CUBIES] = {
  */
 static void state_copy(state_t *to, const state_t *from)
 {
-    for (uint8_t i = 0; i < CUBIES; ++i) {
-        to->p[i] = from->p[i];
-        to->o[i] = from->o[i];
-    }
+    ((state_word_t *) to)[0] = ((const state_word_t *) from)[0];
+    ((state_word_t *) to)[1] = ((const state_word_t *) from)[1];
+    ((state_word_t *) to)[2] = ((const state_word_t *) from)[2];
+    ((state_word_t *) to)[3] = ((const state_word_t *) from)[3];
 }
 
 /* to and from must be different states. */
