@@ -77,7 +77,6 @@ typedef struct {
 /* Indexed by step (face | turn << 2); 3 and 7 are not steps. */
 static const char *const step_names[] = {"R",  "B",  "D",  "", "R2", "B2",
                                          "D2", "",   "R'", "B'", "D'"};
-static const uint8_t inverse_move[MOVES] = {2, 1, 0, 5, 4, 3, 8, 7, 6};
 /* Each destination takes a cubie from source[face][destination]. */
 static const uint8_t source[3][CUBIES] = {
     {1, 4, 2, 0, 3, 5, 6},
@@ -219,7 +218,6 @@ static void solve(state_t *state)
 {
     stack_entry_t stack[12];
     uint8_t sp;
-    const state_t solved = {{0, 1, 2, 3, 4, 5, 6}, {0}};
 
     state_copy(&stack[0].now_state, state);
     if (search_five_step(rank_state(state)) >= 0) {
@@ -275,7 +273,6 @@ static int parse_state(const char *input, state_t *state)
 int main(int argc, char **argv)
 {
     state_t state;
-    uint8_t diameter;
     if (argc != 2 || !parse_state(argv[1], &state)) {
         /* C99 5.1.2.2.1 lets argv[0] be null when argc is 0. */
         print_usage(argc > 0 && argv[0] ? argv[0] : "solver");
