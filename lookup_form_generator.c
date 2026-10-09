@@ -319,9 +319,9 @@ int main(int argc, char **argv)
         uint8_t first_move = 0;
         for (uint32_t rank = rank_state(&state); rank; rank = rank_state(&state)) {
             uint8_t move = table[rank];
-            /* Stored in IDDFS_solver's encoding: face | turn << 2. */
+            /* Stored in IDDFS_solver's encoding: turn * 3 + face. */
             if (!step_cnt)
-                first_move = (uint8_t) (move / 3U | (move % 3U) << 2);
+                first_move = (uint8_t) (move % 3U * 3U + move / 3U);
             state = apply_move(state, move);
             step_cnt++;
         }

@@ -60,13 +60,15 @@ typedef struct {
 /* A word that may alias the bytes of a state_t. */
 typedef uint32_t __attribute__((may_alias)) state_word_t;
 
-#define get_face(step) (step & 0x3)
+/* A step is turn * 3 + face, in the order R B D R2 B2 D2 R' B' D', so its
+ * face is the step mod 3 and the step to try after it is the step plus one.
+ * MOVES is the step of the stack's root, no move with a face no move has,
+ * and the next_step of an entry with no step left to try.
+ */
+#define get_face(step) (mod3_form[step])
 
-#define get_turn(step) ((step >> 2) & 0x3)
-
-uint8_t next_turn_form[] = {0x1, 0x2, 0x4, 0xFF, 0x5, 0x6, 0x8, 0xFF, 0x9, 0xa, 0xFF};
-
-uint8_t mod3_form[] = {0, 1, 2, 0, 1};
+/* x mod 3 for x < MOVES. The last entry is the face of the root's step. */
+uint8_t mod3_form[] = {0, 1, 2, 0, 1, 2, 0, 1, 2, 3};
 
 typedef struct {
     state_t now_state;
@@ -74,19 +76,21 @@ typedef struct {
     uint8_t next_step;
 } stack_entry_t;
 
-/* Indexed by step (face | turn << 2); 3 and 7 are not steps. */
-static const char *const step_names[] = {"R",  "B",  "D",  "", "R2", "B2",
-                                         "D2", "",   "R'", "B'", "D'"};
-/* Each destination takes a cubie from source[face][destination]. */
-static const uint8_t source[3][CUBIES] = {
-    {1, 4, 2, 0, 3, 5, 6},
-    {0, 1, 2, 4, 5, 6, 3},
-    {0, 2, 5, 3, 1, 4, 6},
+static const char *const step_names[MOVES] = {"R",  "B",  "D",  "R2", "B2",
+                                              "D2", "R'", "B'", "D'"};
+/* Each destination takes a cubie from source[step][destination]. The rows of
+ * a half turn and of a counter-clockwise turn are the quarter turn of that
+ * face composed two and three times.
+ */
+static const uint8_t source[MOVES][CUBIES] = {
+    {1, 4, 2, 0, 3, 5, 6}, {0, 1, 2, 4, 5, 6, 3}, {0, 2, 5, 3, 1, 4, 6},
+    {4, 3, 2, 1, 0, 5, 6}, {0, 1, 2, 5, 6, 3, 4}, {0, 5, 4, 3, 2, 1, 6},
+    {3, 0, 2, 4, 1, 5, 6}, {0, 1, 2, 6, 3, 4, 5}, {0, 4, 1, 3, 5, 2, 6},
 };
-static const uint8_t twist[3][CUBIES] = {
-    {1, 2, 0, 2, 1, 0, 0},
-    {0, 0, 0, 1, 2, 1, 2},
-    {0, 0, 0, 0, 0, 0, 0},
+static const uint8_t twist[MOVES][CUBIES] = {
+    {1, 2, 0, 2, 1, 0, 0}, {0, 0, 0, 1, 2, 1, 2}, {0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0},
+    {1, 2, 0, 2, 1, 0, 0}, {0, 0, 0, 1, 2, 1, 2}, {0, 0, 0, 0, 0, 0, 0},
 };
 
 /* States are never assigned as whole structs: the compiler turns that into
@@ -101,24 +105,12 @@ static void state_copy(state_t *to, const state_t *from)
 }
 
 /* to and from must be different states. */
-static void quarter_turn(state_t *to, const state_t *from, uint8_t face)
-{
-    for (uint8_t i = 0; i < CUBIES; ++i) {
-        uint8_t cubie = source[face][i];
-        to->p[i] = from->p[cubie];
-        to->o[i] = mod3_form[from->o[cubie] + twist[face][i]];
-    }
-}
-
-/* to and from must be different states. */
 static void apply_move(state_t *to, const state_t *from, uint8_t move)
 {
-    uint8_t turns = get_turn(move), face = get_face(move);
-    quarter_turn(to, from, face);
-    for (uint8_t i = 0; i < turns; ++i) {
-        state_t previous;
-        state_copy(&previous, to);
-        quarter_turn(to, &previous, face);
+    for (uint8_t i = 0; i < CUBIES; ++i) {
+        uint8_t cubie = source[move][i];
+        to->p[i] = from->p[cubie];
+        to->o[i] = mod3_form[from->o[cubie] + twist[move][i]];
     }
 }
 
@@ -227,9 +219,9 @@ static void solve(state_t *state)
 
     for (uint8_t allow_step = 1;allow_step <= 6;allow_step++) {
         sp = 0;
-        stack[sp].step = 0xFF;
+        stack[sp].step = MOVES;
         stack[sp].next_step = 0;
-        while (!(sp == 0 && stack[sp].next_step == 0xFF)) {
+        while (!(sp == 0 && stack[sp].next_step == MOVES)) {
             if (sp == allow_step) {
                 if (search_five_step(rank_state(&stack[sp].now_state)) >= 0) {
                     print_solution(stack, sp);
@@ -238,15 +230,15 @@ static void solve(state_t *state)
             pop_stack:
                 do {
                     sp--;
-                    stack[sp].next_step = next_turn_form[stack[sp].next_step];
-                } while (sp > 0 && stack[sp].next_step == 0xFF);
+                    stack[sp].next_step++;
+                } while (sp > 0 && stack[sp].next_step == MOVES);
 
             } else {
                 if (get_face(stack[sp].next_step) == get_face(stack[sp].step))
-                    stack[sp].next_step = next_turn_form[stack[sp].next_step];
+                    stack[sp].next_step++;
                 uint8_t next_step = stack[sp].next_step;
                 
-                if (next_step == 0xFF)
+                if (next_step == MOVES)
                     goto pop_stack;
 
                 apply_move(&stack[sp + 1].now_state, &stack[sp].now_state, next_step);
