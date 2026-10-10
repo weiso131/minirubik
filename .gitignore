@@ -9,3 +9,4 @@ god_test
 IDDFS_solver.elf
 .rv32_state
 Ripes-*.AppImage
+IDDFS_solver_asm.elf

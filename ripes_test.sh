@@ -73,8 +73,14 @@ data=$(section .data)
 bss=$(section .bss)
 stack=$(section .stack)
 
+# What the program wrote is everything before the line Ripes adds on exit.
+written=$(printf '%s\n' "$output" | sed '/^Program exited with code: /,$d')
+
 echo "image:                $elf on $proc"
-echo "output:               $(printf '%s\n' "$output" | sed -n 1p)"
+echo "output:"
+echo "=============="
+[ -z "$written" ] || printf '%s\n' "$written"
+echo "=============="
 echo "exit code:            $code"
 echo "instructions retired: $iret"
 printf '%-21s %7d bytes\n' .text: "$text" .rodata: "$rodata" .data: "$data" \

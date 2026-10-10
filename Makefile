@@ -50,6 +50,14 @@ IDDFS_solver.elf: IDDFS_solver.c lookup_form.h lookup_form_generator \
 		-nostdlib -static -DRIPES -DSTATE='"$(RV32_STATE)"' -T rv32/link.ld \
 		rv32/start.S IDDFS_solver.c -x c - -o $@
 
+# The hand-written assembly version. rv32/IDDFS_solver.S is the whole program
+# (it has its own _start); the only C linked in is the generated table.
+IDDFS_solver_asm.elf: rv32/IDDFS_solver.S lookup_form.h lookup_form_generator \
+		rv32/link.ld .rv32_state
+	./lookup_form_generator | $(RV32_CC) $(RV32_CFLAGS) -ffreestanding \
+		-nostdlib -static -I. -DSTATE='"$(RV32_STATE)"' -T rv32/link.ld \
+		rv32/IDDFS_solver.S -x c - -o $@
+
 god_test: god_test.c
 	$(CC) $(CFLAGS) $< -o $@
 
@@ -132,4 +140,4 @@ endif
 
 clean:
 	$(RM) solver mini IDDFS_solver lookup_form_generator god_test \
-		IDDFS_solver.elf .rv32_state
+		IDDFS_solver.elf IDDFS_solver_asm.elf .rv32_state
