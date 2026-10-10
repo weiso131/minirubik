@@ -78,14 +78,14 @@ fail_parsing:
     j    exit
 
 parsing_done:
-    # debug output
-    la   s1, input_state
-    .rept 14
-    lbu  a0, 0(s1)
+
+solve:
+    # s11 use as state_stack sp
+    la   a0, input_state
+    jal  ra, rank_state
+
     li   a7, PRINT_INT
     ecall
-    addi s1, s1, 1
-    .endr
 
 exit:
     li   a0, 0
@@ -93,6 +93,85 @@ exit:
     ecall
 exit1:  
     j    exit1
+
+.macro rank_state_for label1, label2
+\label1:
+    lbu  t3, 0(t4) # state->p[i]
+    bgeu t3, t2, \label2
+    addi t0, t0, 1
+\label2:
+    addi t4, t4, 1
+    bne  t4, t5, \label1
+.endm
+
+rank_state:
+    addi t0, x0, 0 # p
+    addi t5, a0, 7 # state->p + CUBIES
+
+    # loop1
+    lbu  t2, 0(a0) # state->p[0]
+    addi t4, a0, 1 
+    rank_state_for rank_state_loop1, rank_state_loop1_no_plus
+    slli t2, t0, 2
+    slli t0, t0, 1
+    add  t0, t0, t2
+
+    # loop2
+    lbu  t2, 1(a0) # state->p[1]
+    addi t4, a0, 2
+    rank_state_for rank_state_loop2, rank_state_loop2_no_plus
+    slli t2, t0, 2
+    add  t0, t0, t2
+
+    # loop3
+    lbu  t2, 2(a0) # state->p[2]
+    addi t4, a0, 3
+    rank_state_for rank_state_loop3, rank_state_loop3_no_plus
+    slli t0, t0, 2
+
+    # loop4
+    lbu  t2, 3(a0) # state->p[3]
+    addi t4, a0, 4
+    rank_state_for rank_state_loop4, rank_state_loop4_no_plus
+    slli t2, t0, 1
+    add  t0, t0, t2
+
+    # loop5
+    lbu  t2, 4(a0) # state->p[4]
+    addi t4, a0, 5
+    rank_state_for rank_state_loop5, rank_state_loop5_no_plus
+    slli t0, t0, 1
+
+    # loop6
+    lbu  t2, 5(a0) # state->p[5]
+    addi t4, a0, 6
+    rank_state_for rank_state_loop6, rank_state_loop6_no_plus
+
+    # loop7
+    addi t5, a0, 13 # state->o + 6
+    addi t4, a0, 7  # state->o
+    addi a0, x0, 0  # o
+rank_state_loop7:
+    lbu  t3, 0(t4)  # state->o[i]
+    slli t2, a0, 1
+    add  a0, a0, t2
+    add  a0, a0, t3
+    addi t4, t4, 1
+    bne  t4, t5, rank_state_loop7
+
+    add  a0, a0, t0
+    slli t1, t0, 3
+    add  a0, a0, t1
+    slli t1, t0, 4
+    add  a0, a0, t1
+    slli t1, t0, 6
+    add  a0, a0, t1
+    slli t1, t0, 7
+    add  a0, a0, t1
+    slli t1, t0, 9
+    add  a0, a0, t1
+
+    jr ra
 
     .section .rodata
 input:
