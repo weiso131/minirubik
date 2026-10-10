@@ -153,8 +153,6 @@ static int valid(const state_t *state)
 {
     uint8_t sum = 0;
     for (uint8_t i = 0; i < CUBIES; ++i) {
-        if (state->p[i] >= CUBIES || state->o[i] >= 3)
-            return 0;
         for (uint8_t j = 0; j < i; ++j)
             if (state->p[j] == state->p[i])
                 return 0;
