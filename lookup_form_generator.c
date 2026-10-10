@@ -8,7 +8,9 @@ enum {
     PERMUTATIONS = 5040,
     ORIENTATIONS = 729,
     STATES = PERMUTATIONS * ORIENTATIONS,
-    MOVES = 9
+    MOVES = 9,
+    /* Must match lookup_form.h. */
+    ELEVEN_STEP_NUM = 2644
 };
 
 typedef struct {
@@ -306,8 +308,12 @@ int main(int argc, char **argv)
     uint8_t *table = build_table(&diameter);
     
     uint8_t *move_table = calloc(6112, sizeof(uint8_t));
+    /* States 11 moves away, with the first move of a solution of each. */
+    uint32_t *eleven_ranks = calloc(ELEVEN_STEP_NUM, sizeof(uint32_t));
+    uint8_t *eleven_move_table =
+        calloc((ELEVEN_STEP_NUM + 1) / 2, sizeof(uint8_t));
 
-    int find_cnt = 0;
+    int find_cnt = 0, eleven_cnt = 0;
     printf("#include \"lookup_form.h\"\n\n");
     printf("uint32_t five_step_ranks[] = {");
     for (int i = 0;i < STATES;i++) {
@@ -329,13 +335,33 @@ int main(int argc, char **argv)
             printf("0x%x, ", i);
             move_table[find_cnt >> 1] |= first_move << (4 * (find_cnt & 1));
             find_cnt++;
-        }   
-        
-        
+        }
+        if (step_cnt == 11) {
+            if (eleven_cnt == ELEVEN_STEP_NUM) {
+                fprintf(stderr, "more than %d states 11 moves away\n",
+                        ELEVEN_STEP_NUM);
+                return 1;
+            }
+            eleven_ranks[eleven_cnt] = (uint32_t) i;
+            eleven_move_table[eleven_cnt >> 1] |=
+                first_move << (4 * (eleven_cnt & 1));
+            eleven_cnt++;
+        }
+    }
+    if (eleven_cnt != ELEVEN_STEP_NUM) {
+        fprintf(stderr, "%d states 11 moves away, expected %d\n", eleven_cnt,
+                ELEVEN_STEP_NUM);
+        return 1;
     }
     printf("};\n\nuint8_t five_step_first_move[] = {");
     for (int i = 0;i < 6112;i++)
         printf("0x%x, ", move_table[i]);
+    printf("};\n\nuint32_t eleven_step_ranks[] = {");
+    for (int i = 0; i < ELEVEN_STEP_NUM; i++)
+        printf("0x%x, ", eleven_ranks[i]);
+    printf("};\n\nuint8_t eleven_step_first_move[] = {");
+    for (int i = 0; i < (ELEVEN_STEP_NUM + 1) / 2; i++)
+        printf("0x%x, ", eleven_move_table[i]);
     printf("};\n");
 
     free(table);

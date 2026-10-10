@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include "lookup_form.h"
 
 /* Everything that needs the C library is confined to this block. With RIPES
@@ -179,15 +181,41 @@ static int search_five_step(uint32_t rank)
     return -1;
 }
 
-/* Print the steps on stack[1..sp], then follow five_step_first_move from
- * stack[sp].now_state, which must be in the table, down to the solved state.
+/* Index of rank in eleven_step_ranks, or -1 if it is not 11 moves away. */
+static int search_eleven_step(uint32_t rank)
+{
+    int l = 0, r = ELEVEN_STEP_NUM;
+
+    while (r - l > 1) {
+        int lr = (l + r) >> 1;
+        if (eleven_step_ranks[lr] > rank)
+            r = lr;
+        else
+            l = lr;
+    }
+    if (eleven_step_ranks[l] == rank)
+        return l;
+
+    return -1;
+}
+
+/* Print first_step unless it is NULL and the steps on stack[1..sp], then
+ * follow five_step_first_move from stack[sp].now_state, which must be in the
+ * table, down to the solved state.
  */
-static void print_solution(const stack_entry_t *stack, uint8_t sp)
+static void print_solution(const stack_entry_t *stack,
+                           uint8_t sp,
+                           const char *first_step)
 {
     state_t state;
     const char *separator = "";
 
     state_copy(&state, &stack[sp].now_state);
+
+    if (first_step) {
+        print_string(first_step);
+        separator = " ";
+    }
 
     for (uint8_t i = 1; i <= sp; ++i) {
         print_string(separator);
@@ -208,23 +236,36 @@ static void print_solution(const stack_entry_t *stack, uint8_t sp)
 
 static void solve(state_t *state)
 {
-    stack_entry_t stack[12];
+    stack_entry_t stack[6];
     uint8_t sp;
+    uint32_t rank = rank_state(state);
+    /* The step from a state 11 moves away to the one the search starts from,
+     * or NULL if the search starts from the given state.
+     */
+    const char *first_step = NULL;
+    int eleven_step;
 
     state_copy(&stack[0].now_state, state);
-    if (search_five_step(rank_state(state)) >= 0) {
-        print_solution(stack, 0);
+    if (search_five_step(rank) >= 0) {
+        print_solution(stack, 0, first_step);
         return;
     }
 
-    for (uint8_t allow_step = 1;allow_step <= 6;allow_step++) {
+    eleven_step = search_eleven_step(rank);
+    if (eleven_step >= 0) {
+        uint8_t step = get_eleven_step_first_move(eleven_step);
+        first_step = step_names[step];
+        apply_move(&stack[0].now_state, state, step);
+    }
+
+    for (uint8_t allow_step = 1;allow_step <= 5;allow_step++) {
         sp = 0;
         stack[sp].step = MOVES;
         stack[sp].next_step = 0;
         while (!(sp == 0 && stack[sp].next_step == MOVES)) {
             if (sp == allow_step) {
                 if (search_five_step(rank_state(&stack[sp].now_state)) >= 0) {
-                    print_solution(stack, sp);
+                    print_solution(stack, sp, first_step);
                     return;
                 }
             pop_stack:
