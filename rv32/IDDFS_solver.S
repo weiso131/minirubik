@@ -83,6 +83,7 @@ solve:
     # s11 use as state_stack sp
     la   a0, input_state
     jal  ra, rank_state
+    jal  ra, search_five_step
 
     li   a7, PRINT_INT
     ecall
@@ -172,6 +173,37 @@ rank_state_loop7:
     add  a0, a0, t1
 
     jr ra
+
+search_five_step:
+    addi t0, x0, 0 # l
+    li   t1, 12224 # r
+    la   t3, five_step_ranks
+    addi t5, x0, 1
+search_five_step_loop:
+    add  t2, t0, t1 
+    srli t2, t2, 1  # lr = (l + r) / 2
+    slli t4, t2, 2  # size is 4 bytes
+    add  t6, t4, t3 
+    lw   t4, 0(t6)  # five_step_ranks[lr]
+    bgeu a0, t4, search_five_step_else
+    addi t1, t2, 0
+    j    search_five_step_loop_continue
+search_five_step_else:
+    addi t0, t2, 0
+search_five_step_loop_continue:
+    sub  t4, t1, t0
+    bltu t5, t4, search_five_step_loop # while (r - l > 1)
+
+    slli t1, t0, 2  # size is 4 bytes
+    add  t1, t1, t3
+    lw   t3, 0(t1)  # five_step_ranks[l]
+    bne  t3, a0, search_five_step_neq
+    addi a0, t0, 0  # ret = l
+    jr   ra
+search_five_step_neq:
+    addi a0, x0, -1
+    jr   ra
+
 
     .section .rodata
 input:
