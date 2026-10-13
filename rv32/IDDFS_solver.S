@@ -233,30 +233,30 @@ rank_state_loop7:
     jr ra
 
 search_five_step:
-    addi t0, x0, 0 # l
-    li   t1, 12224 # r
-    la   t3, five_step_ranks
-    addi t5, x0, 1
+    addi a1, x0, 0 # l
+    li   a2, 12224 # r
+    la   a3, five_step_ranks
+    addi a4, x0, 1
 search_five_step_loop:
-    add  t2, t0, t1 
-    srli t2, t2, 1  # lr = (l + r) / 2
-    slli t4, t2, 2  # size is 4 bytes
-    add  t6, t4, t3 
-    lw   t4, 0(t6)  # five_step_ranks[lr]
-    bgeu a0, t4, search_five_step_else
-    addi t1, t2, 0
+    add  a7, a1, a2 
+    srli a7, a7, 1  # lr = (l + r) / 2
+    slli a5, a7, 2  # size is 4 bytes
+    add  a6, a5, a3 
+    lw   a5, 0(a6)  # five_step_ranks[lr]
+    bgeu a0, a5, search_five_step_else
+    addi a2, a7, 0
     j    search_five_step_loop_continue
 search_five_step_else:
-    addi t0, t2, 0
+    addi a1, a7, 0
 search_five_step_loop_continue:
-    sub  t4, t1, t0
-    bltu t5, t4, search_five_step_loop # while (r - l > 1)
+    sub  a5, a2, a1
+    bltu a4, a5, search_five_step_loop # while (r - l > 1)
 
-    slli t1, t0, 2  # size is 4 bytes
-    add  t1, t1, t3
-    lw   t3, 0(t1)  # five_step_ranks[l]
-    bne  t3, a0, search_five_step_neq
-    addi a0, t0, 0  # ret = l
+    slli a2, a1, 2  # size is 4 bytes
+    add  a2, a2, a3
+    lw   a3, 0(a2)  # five_step_ranks[l]
+    bne  a3, a0, search_five_step_neq
+    addi a0, a1, 0  # ret = l
     jr   ra
 search_five_step_neq:
     addi a0, x0, -1
