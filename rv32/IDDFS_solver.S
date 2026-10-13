@@ -12,7 +12,7 @@
 #define PRINT_HEX 34
 #define EXIT2 93 /* exit code in a0 */
 
-#define STATE_SIZE 14
+#define STATE_SIZE 16
 
     .section .text.start, "ax"
     .globl _start
@@ -81,12 +81,70 @@ parsing_done:
 
 solve:
     # s11 use as state_stack sp
-    la   a0, input_state
+    addi s11, x0, 0
+    la   s10, state_stack
+    addi a0, s10, 0
     jal  ra, rank_state
     jal  ra, search_five_step
 
-    li   a7, PRINT_INT
+    bge a0, x0, print_solution
+    j    exit
+
+print_solution:
+    # previous: s1
+    # rank    : s2
+    # step    : s3
+    # five_step_first_move : s4
+    # step_names: s5
+    # space   : s6
+    la   s6, space
+    slli s11, s11, 4
+    add  s1, s10, s11 # state_t *previous = &stack[sp].now_state;
+    la   s4, five_step_first_move
+    la   s5, step_names
+
+    # five step left part
+    addi a0, s1, 0
+    jal  ra, rank_state
+    addi s2, a0, 0    # rank = rank_state(&stack[sp].now_state)
+    xori s11, s11, 16
+
+print_solution_loop_5_step:
+    addi a0, s2, 0
+    jal  ra, search_five_step
+    # get_five_step_first_move
+    addi a1, a0, 0
+    srli a1, a1, 1    # i >> 1
+    
+    add  a1, a1, s4
+    lbu  s3, 0(a1)    # five_step_first_move[(i) >> 1]
+    andi a0, a0, 1    # (i) & 1
+    slli a0, a0, 2    # ((i) & 1) << 2
+    srl  s3, s3, a0   # (five_step_first_move[(i) >> 1] >> (((i) & 1) << 2))
+    andi s3, s3, 0xF  # s3: step
+
+    slli t1, s3, 2
+    add  t0, t1, s5
+    lw   a0, 0(t0)
+    li   a7, PRINT_STR
     ecall
+    addi a0, s6, 0
+    li   a7, PRINT_STR
+    ecall
+
+    add  a0, s10, s11
+    addi a1, s1, 0
+    addi a2, s3, 0
+    jal  apply_move
+
+    add  s1, s10, s11 # previous = &stack[sp].now_state;
+
+    addi a0, s1, 0
+    jal  ra, rank_state
+    addi s2, a0, 0
+
+    xori s11, s11, 16
+    bne  s2, x0, print_solution_loop_5_step # rank != 0
 
 exit:
     li   a0, 0
@@ -204,6 +262,50 @@ search_five_step_neq:
     addi a0, x0, -1
     jr   ra
 
+apply_move:
+    # a0: to
+    # a1: from
+    # a2: move
+
+    slli a3, a2, 2
+    add  a3, a3, a2
+    slli a2, a2, 1 
+    add  a2, a2, a3 # move * 7
+
+    # no large argument function
+
+    la   a4, source
+
+    add  a4, a4, a2    # source + move * 7
+    la   a5, twist
+    add  a5, a5, a2    # twist + move * 7
+    la   a6, mod3_form
+
+    # a0: to->p
+    # a1: from->p
+
+    # loop start
+    .rept 7
+    lbu  a7, 0(a4)  # uint8_t cubie = source[move][i];
+    
+    add  t0, a1, a7  # from->p[cubie]
+    lbu  t1, 0(t0)
+    sb   t1, 0(a0)   # to->p[i] = 
+    
+    add  a7, a7, a1
+    lbu  t0, 7(a7)   # from->o[cubie]
+    lbu  t1, 0(a5)   # twist[move][i]
+    add  t0, t0, t1
+    add  t0, t0, a6
+    lbu  t1, 0(t0)   # mod3_form[from->o[cubie] + twist[move][i]];
+    sb   t1, 7(a0)   # to->o[i] = 
+
+    addi a2, a2, 1
+    addi a0, a0, 1
+    addi a4, a4, 1
+    addi a5, a5, 1
+    .endr
+    jr   ra
 
     .section .rodata
 input:
@@ -211,9 +313,18 @@ input:
     .balign 4       # align to 4 easy to copy
 mod3_form:
     .byte 0, 1, 2, 0, 1, 2, 0, 1, 2, 3
+source:
+    SOURCE_ROWS(ASM_BYTE_ROW)
+twist:
+    TWIST_ROWS(ASM_BYTE_ROW)
+space:
+    .asciz " "
+    .balign 4
+step_names:
+    STEP_NAMES(ASM_NAME_POINTER)
     
     .section .bss
     .balign 4
+state_stack:
 input_state:
-    .space STATE_SIZE
-    .balign 4
+    .space STATE_SIZE * 6

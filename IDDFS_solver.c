@@ -44,13 +44,6 @@ static int output_failed(void)
 }
 #endif
 
-enum {
-    CUBIES = 7,
-    PERMUTATIONS = 5040,
-    ORIENTATIONS = 729,
-    STATES = PERMUTATIONS * ORIENTATIONS,
-    MOVES = 9
-};
 
 /* Padded to 16 bytes and word aligned so that a state is copied as four
  * words. p[7] and o[7] are never read as cubies.
@@ -78,22 +71,9 @@ typedef struct {
     uint8_t next_step;
 } stack_entry_t;
 
-static const char *const step_names[MOVES] = {"R",  "B",  "D",  "R2", "B2",
-                                              "D2", "R'", "B'", "D'"};
-/* Each destination takes a cubie from source[step][destination]. The rows of
- * a half turn and of a counter-clockwise turn are the quarter turn of that
- * face composed two and three times.
- */
-static const uint8_t source[MOVES][CUBIES] = {
-    {1, 4, 2, 0, 3, 5, 6}, {0, 1, 2, 4, 5, 6, 3}, {0, 2, 5, 3, 1, 4, 6},
-    {4, 3, 2, 1, 0, 5, 6}, {0, 1, 2, 5, 6, 3, 4}, {0, 5, 4, 3, 2, 1, 6},
-    {3, 0, 2, 4, 1, 5, 6}, {0, 1, 2, 6, 3, 4, 5}, {0, 4, 1, 3, 5, 2, 6},
-};
-static const uint8_t twist[MOVES][CUBIES] = {
-    {1, 2, 0, 2, 1, 0, 0}, {0, 0, 0, 1, 2, 1, 2}, {0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0},
-    {1, 2, 0, 2, 1, 0, 0}, {0, 0, 0, 1, 2, 1, 2}, {0, 0, 0, 0, 0, 0, 0},
-};
+static const char *const step_names[MOVES] = {STEP_NAMES(C_NAME)};
+static const uint8_t source[MOVES][CUBIES] = {SOURCE_ROWS(C_ROW)};
+static const uint8_t twist[MOVES][CUBIES] = {TWIST_ROWS(C_ROW)};
 
 /* States are never assigned as whole structs: the compiler turns that into
  * a call to memcpy, and a copy of known length is cheaper spelled out.
