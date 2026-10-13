@@ -155,80 +155,80 @@ exit1:
 
 .macro rank_state_for label1, label2
 \label1:
-    lbu  t3, 0(t4) # state->p[i]
-    bgeu t3, t2, \label2
-    addi t0, t0, 1
+    lbu  a4, 0(a5) # state->p[i]
+    bgeu a4, a3, \label2
+    addi a1, a1, 1
 \label2:
-    addi t4, t4, 1
-    bne  t4, t5, \label1
+    addi a5, a5, 1
+    bne  a5, a6, \label1
 .endm
 
 rank_state:
-    addi t0, x0, 0 # p
-    addi t5, a0, 7 # state->p + CUBIES
+    addi a1, x0, 0 # p
+    addi a6, a0, 7 # state->p + CUBIES
 
     # loop1
-    lbu  t2, 0(a0) # state->p[0]
-    addi t4, a0, 1 
+    lbu  a3, 0(a0) # state->p[0]
+    addi a5, a0, 1 
     rank_state_for rank_state_loop1, rank_state_loop1_no_plus
-    slli t2, t0, 2
-    slli t0, t0, 1
-    add  t0, t0, t2
+    slli a3, a1, 2
+    slli a1, a1, 1
+    add  a1, a1, a3
 
     # loop2
-    lbu  t2, 1(a0) # state->p[1]
-    addi t4, a0, 2
+    lbu  a3, 1(a0) # state->p[1]
+    addi a5, a0, 2
     rank_state_for rank_state_loop2, rank_state_loop2_no_plus
-    slli t2, t0, 2
-    add  t0, t0, t2
+    slli a3, a1, 2
+    add  a1, a1, a3
 
     # loop3
-    lbu  t2, 2(a0) # state->p[2]
-    addi t4, a0, 3
+    lbu  a3, 2(a0) # state->p[2]
+    addi a5, a0, 3
     rank_state_for rank_state_loop3, rank_state_loop3_no_plus
-    slli t0, t0, 2
+    slli a1, a1, 2
 
     # loop4
-    lbu  t2, 3(a0) # state->p[3]
-    addi t4, a0, 4
+    lbu  a3, 3(a0) # state->p[3]
+    addi a5, a0, 4
     rank_state_for rank_state_loop4, rank_state_loop4_no_plus
-    slli t2, t0, 1
-    add  t0, t0, t2
+    slli a3, a1, 1
+    add  a1, a1, a3
 
     # loop5
-    lbu  t2, 4(a0) # state->p[4]
-    addi t4, a0, 5
+    lbu  a3, 4(a0) # state->p[4]
+    addi a5, a0, 5
     rank_state_for rank_state_loop5, rank_state_loop5_no_plus
-    slli t0, t0, 1
+    slli a1, a1, 1
 
     # loop6
-    lbu  t2, 5(a0) # state->p[5]
-    addi t4, a0, 6
+    lbu  a3, 5(a0) # state->p[5]
+    addi a5, a0, 6
     rank_state_for rank_state_loop6, rank_state_loop6_no_plus
 
     # loop7
-    addi t5, a0, 13 # state->o + 6
-    addi t4, a0, 7  # state->o
+    addi a6, a0, 13 # state->o + 6
+    addi a5, a0, 7  # state->o
     addi a0, x0, 0  # o
 rank_state_loop7:
-    lbu  t3, 0(t4)  # state->o[i]
-    slli t2, a0, 1
-    add  a0, a0, t2
-    add  a0, a0, t3
-    addi t4, t4, 1
-    bne  t4, t5, rank_state_loop7
+    lbu  a4, 0(a5)  # state->o[i]
+    slli a3, a0, 1
+    add  a0, a0, a3
+    add  a0, a0, a4
+    addi a5, a5, 1
+    bne  a5, a6, rank_state_loop7
 
-    add  a0, a0, t0
-    slli t1, t0, 3
-    add  a0, a0, t1
-    slli t1, t0, 4
-    add  a0, a0, t1
-    slli t1, t0, 6
-    add  a0, a0, t1
-    slli t1, t0, 7
-    add  a0, a0, t1
-    slli t1, t0, 9
-    add  a0, a0, t1
+    add  a0, a0, a1
+    slli a2, a1, 3
+    add  a0, a0, a2
+    slli a2, a1, 4
+    add  a0, a0, a2
+    slli a2, a1, 6
+    add  a0, a0, a2
+    slli a2, a1, 7
+    add  a0, a0, a2
+    slli a2, a1, 9
+    add  a0, a0, a2
 
     jr ra
 
