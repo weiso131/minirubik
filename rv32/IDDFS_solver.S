@@ -85,9 +85,77 @@ solve:
     la   s10, state_stack
     addi a0, s10, 0
     jal  ra, rank_state
-    jal  ra, search_five_step
 
-    bge a0, x0, print_solution
+search_eleven_step:
+    addi a1, x0, 0 # l
+    li   a2, 2644  # r
+    la   a3, eleven_step_ranks
+    addi a4, x0, 1
+search_eleven_step_loop:
+    add  a7, a1, a2 
+    srli a7, a7, 1  # lr = (l + r) / 2
+    slli a5, a7, 2  # size is 4 bytes
+    add  a6, a5, a3 
+    lw   a5, 0(a6)  # eleven_step_ranks[lr]
+    bgeu a0, a5, search_eleven_step_else
+    addi a2, a7, 0
+    j    search_eleven_step_loop_continue
+search_eleven_step_else:
+    addi a1, a7, 0
+search_eleven_step_loop_continue:
+    sub  a5, a2, a1
+    bltu a4, a5, search_eleven_step_loop # while (r - l > 1)
+
+    slli a2, a1, 2  # size is 4 bytes
+    add  a2, a2, a3
+    lw   a3, 0(a2)  # eleven_step_ranks[l]
+    bne  a3, a0, search_eleven_step_neq
+# is eleven step state
+    la   t0, eleven_step_first_move
+    addi t1, a1, 0
+    srli t1, t1, 1
+    add  t1, t1, t0
+    lbu  a2, 0(t1)    # five_step_first_move[(i) >> 1]
+    andi a1, a1, 1    # (i) & 1
+    slli a1, a1, 2    # ((i) & 1) << 2
+    srl  a2, a2, a1   # (five_step_first_move[(i) >> 1] >> (((i) & 1) << 2))
+    andi a2, a2, 0xF  # a2: step
+    
+    la   s5, step_names # config
+    la   s6, space
+    slli t1, a2, 2
+    add  t0, t1, s5
+    lw   a0, 0(t0)      # don't use check 5 step after this
+    li   a7, PRINT_STR
+    ecall
+    addi a0, s6, 0
+    li   a7, PRINT_STR
+    ecall
+
+    addi a0, s10, 16 # apply_move to state_stack[1] first
+    addi a1, s10, 0
+    # a2 is already set to move value
+    jal  apply_move
+
+    # than copy to state_stack[0]
+    lw   t0, 16(s10)
+    lw   t1, 20(s10)
+    lw   t2, 24(s10)
+    lhu  t3, 28(s10)
+    sw   t0, 0(s10)
+    sw   t1, 4(s10)
+    sw   t2, 8(s10)
+    sh   t3, 12(s10)
+
+    j    not_five_step
+search_eleven_step_neq:
+
+# check 5 step
+    jal  ra, search_five_step
+    bge  a0, x0, print_solution
+
+not_five_step:
+
     j    exit
 
 print_solution:
