@@ -2,7 +2,8 @@
  *
  * A BFS from the solved state gives the optimal move count of every state.
  * Each tested state is then handed to the solver as its only argument, and
- * the moves it prints must solve that state in exactly that many moves.
+ * the moves it prints must solve that state in exactly that many moves. The
+ * solved state itself is not tested.
  */
 #define _POSIX_C_SOURCE 200809L
 
@@ -300,11 +301,14 @@ static const char *check_solution(state_t state,
     return NULL;
 }
 
-/* Test every step-th rank starting at first; returns how that went. */
+/* Test every step-th rank starting at first, leaving out the solved state and
+ * the states that need more than moves moves; returns how that went.
+ */
 static result_t test_ranks(const char *solver,
                            const uint8_t *distance,
                            uint64_t first,
-                           uint64_t step)
+                           uint64_t step,
+                           uint8_t moves)
 {
     result_t result;
     uint32_t tested = 0;
@@ -316,6 +320,9 @@ static result_t test_ranks(const char *solver,
         uint64_t elapsed;
         state_t state;
 
+        /* The solved state is not an input a solver has to handle. */
+        if (distance[rank] == 0 || distance[rank] > moves)
+            continue;
         unrank_state((uint32_t) rank, &state);
         for (uint8_t i = 0; i < CUBIES; ++i) {
             input[i] = (char) ('1' + state.p[i]);
@@ -401,7 +408,7 @@ static long parse_count(const char *text, long limit)
 int main(int argc, char **argv)
 {
     enum { JOBS_MAX = 1024 };
-    long step = 1, jobs = sysconf(_SC_NPROCESSORS_ONLN);
+    long step = 1, jobs = sysconf(_SC_NPROCESSORS_ONLN), moves = DEPTHS - 1;
     result_t total;
     uint64_t start, wall, tested = 0, nanoseconds = 0;
     double baseline = 0;
@@ -414,14 +421,17 @@ int main(int argc, char **argv)
         jobs = 1;
     if (jobs > JOBS_MAX)
         jobs = JOBS_MAX;
-    if (argc < 2 || argc > 4 ||
+    if (argc < 2 || argc > 5 ||
         (argc > 2 && (step = parse_count(argv[2], STATES)) < 0) ||
-        (argc > 3 && (jobs = parse_count(argv[3], JOBS_MAX)) < 0)) {
+        (argc > 3 && (jobs = parse_count(argv[3], JOBS_MAX)) < 0) ||
+        (argc > 4 && (moves = parse_count(argv[4], DEPTHS - 1)) < 0)) {
         fprintf(stderr,
-                "usage: %s SOLVER [STEP [JOBS]]\n"
+                "usage: %s SOLVER [STEP [JOBS [MOVES]]]\n"
                 "  SOLVER  executable to test, run as: SOLVER PPPPPPPOOOOOOO\n"
                 "  STEP    test only the ranks divisible by STEP (default 1)\n"
-                "  JOBS    worker processes (default: online processors)\n",
+                "  JOBS    worker processes (default: online processors)\n"
+                "  MOVES   test only the states that need at most MOVES moves\n"
+                "          (default 11, which is all of them)\n",
                 argc > 0 && argv[0] ? argv[0] : "god_test");
         return 2;
     }
@@ -455,7 +465,7 @@ int main(int argc, char **argv)
             result_t result;
             close(fds[0]);
             result = test_ranks(argv[1], distance, (uint64_t) (w * step),
-                                (uint64_t) (jobs * step));
+                                (uint64_t) (jobs * step), (uint8_t) moves);
             _exit(write_all(fds[1], &result, sizeof result) != 0);
         }
         close(fds[1]);

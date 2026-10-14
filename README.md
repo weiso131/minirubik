@@ -57,7 +57,7 @@ solution. Both formats are explained below.
 against a breadth-first table of optimal move counts:
 
 ```sh
-./god_test SOLVER [STEP [JOBS]]
+./god_test SOLVER [STEP [JOBS [MOVES]]]
 make god_check                 # ./god_test ./IDDFS_solver, all states
 make god_check GOD_STEP=1000   # every 1000th state, well under a second
 ```
@@ -70,6 +70,10 @@ make god_check GOD_STEP=1000   # every 1000th state, well under a second
 - `JOBS` is the number of worker processes, by default one per online
   processor. Each worker takes its own share of the ranks and reports its
   totals to the parent through a pipe when it is done.
+- `MOVES` tests only the states whose optimal solution has at most `MOVES`
+  moves. The default, 11, covers all of them.
+
+The solved state is never tested; it is not an input a solver has to handle.
 
 Up to ten failures per worker are printed to stderr in full, and the exit
 status is 1 if any state failed. The summary also times the runs, grouped by
@@ -132,6 +136,39 @@ The instruction count is Ripes's `--iret`, and the sizes are read from the
 image's sections. Ripes runs with no ISA extensions enabled, but it does not
 reject a `mul` inside an ELF image; that is enforced when the image is built,
 by `-march=rv32i` and by linking without libgcc.
+
+### Checking the assembly version on Ripes
+
+`rv32/IDDFS_solver.S` can be checked with `god_test` too, without rebuilding
+it for every state. `ripes_solve.sh` takes the place of a native solver:
+
+```sh
+make IDDFS_solver_asm.elf god_test
+./ripes_solve.sh 76542133222133                    # one state
+./god_test ./ripes_solve.sh 1 "$(nproc)" 5         # every state within 5 moves
+```
+
+`ripes_solve.sh STATE` copies the image, writes `STATE` into the copy with
+`ripes_state.sh`, runs the copy on Ripes, and prints only what the program
+wrote, once the run is over. Its exit status is the program's exit code, or
+124 if the run timed out. It reads these environment variables:
+
+- `ELF`: the image, by default `IDDFS_solver_asm.elf` in this directory.
+- `RIPES`: the Ripes executable, by default the `Ripes-*.AppImage` in this
+  directory.
+- `PROC`: the processor model, by default `RV32_ISS`.
+- `TIMEOUT`: how long a run may take, by default 10 seconds.
+
+Each run starts Ripes once, about 0.2 s, so the 12,223 states within 5 moves
+take about 2.5 minutes with 20 jobs. Each run also gets a Ripes settings
+directory of its own: runs that share `~/.config/Ripes` wait for each other's
+lock on it and end up timing out.
+
+`ripes_state.sh IMAGE.elf STATE [OUT.elf]` does the writing: it replaces the
+string at the image's `input` symbol, in `OUT.elf` if given and otherwise in
+`IMAGE.elf` itself. `STATE` may be up to 14 characters and is not checked. The
+C image `IDDFS_solver.elf` has no `input` symbol, so this works only for the
+assembly image.
 
 ### Reading the 14-digit input
 
