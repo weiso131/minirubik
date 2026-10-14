@@ -232,7 +232,22 @@ print_solution:
     la   s4, five_step_first_move
     la   s5, step_names
 
-    # five step left part
+    addi t0, s10, 16
+    blt  s1, t0, print_solution_five_step
+print_solution_pop_stack_print:
+    lbu  t1, 14(t0)
+    slli t1, t1, 2
+    add  t1, t1, s5
+    lw   a0, 0(t1)
+    li   a7, PRINT_STR
+    ecall
+    addi a0, s6, 0
+    li   a7, PRINT_STR
+    ecall
+
+    addi t0, t0, 16
+    bgeu s1, t0, print_solution_pop_stack_print
+print_solution_five_step:
     addi a0, s1, 0
     jal  ra, rank_state
     addi s2, a0, 0    # rank = rank_state(&stack[sp].now_state)
