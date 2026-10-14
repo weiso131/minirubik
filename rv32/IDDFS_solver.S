@@ -83,6 +83,8 @@ solve:
     # s11 use as state_stack sp
     addi s11, x0, 0
     la   s10, state_stack
+    addi t0, x0, 9
+    sb   t0, 14(s10)  # stack[0].step = MOVES;
     addi a0, s10, 0
     jal  ra, rank_state
 
@@ -120,6 +122,7 @@ search_eleven_step_loop_continue:
     slli a1, a1, 2    # ((i) & 1) << 2
     srl  a2, a2, a1   # (five_step_first_move[(i) >> 1] >> (((i) & 1) << 2))
     andi a2, a2, 0xF  # a2: step
+    sb   a2, 14(s10)  # stack[0].step = step;
     
     la   s5, step_names # config
     la   s6, space
@@ -155,6 +158,64 @@ search_eleven_step_neq:
     bge  a0, x0, print_solution
 
 not_five_step:
+# start IDDFS
+
+    addi s9, x0, 1 # uint8_t allow_step = 1
+    la   s8, mod3_form
+    addi s7, x0, 9 # s7: MOVES
+IDDFS_loop:
+    addi s11, x0, 0 
+    sb   s11, 15(s10) # stack[sp].next_step = 0
+IDDFS_allow_step_loop:
+    bne  s11, s9, IDDFS_get_next_step
+IDDFS_check_if_solve:
+    slli a0, s11, 4
+    add  a0, a0, s10 # stack + sp
+    jal  ra, rank_state
+    jal  ra, search_five_step
+    bge  a0, x0, print_solution # if (search_five_step(rank_state(&stack[sp].now_state)) >= 0)
+IDDFS_pop_stack_loop:
+    addi s11, s11, -1
+    slli t0, s11, 4
+    add  t0, t0, s10
+    lbu  t1, 15(t0)
+    addi t1, t1, 1
+    sb   t1, 15(t0) # stack[sp].next_step
+    beq  s11, x0, IDDFS_check_allow_step_loop_end
+    bne  t1, s7, IDDFS_allow_step_loop
+    j    IDDFS_pop_stack_loop
+IDDFS_check_allow_step_loop_end:
+    beq  s7, t1, IDDFS_allow_step_loop_end
+    /* if (sp == 0 && stack[sp].next_step == MOVES) break */
+IDDFS_get_next_step:
+    # t5: next_step
+    # t6: stack + sp
+    slli t6, s11, 4
+    add  t6, s10, t6 # stack + sp
+    lbu  t5, 15(t6) # stack[sp].next_step
+    lbu  t2, 14(t6) # stack[sp].step
+    add  t1, t5, s8 # mod3_form + stack[sp].next_step
+    add  t2, t2, s8 # mod3_form + stack[sp].step
+    lbu  t3, 0(t1)
+    lbu  t4, 0(t2)
+    bne  t3, t4, IDDFS_not_skip
+    addi t5, t5, 1
+    sb   t5, 15(t6)
+    beq  t5, s7, IDDFS_pop_stack_loop
+IDDFS_not_skip:
+    addi a0, t6, 16 # stack[sp + 1].now_state
+    addi a1, t6, 0
+    addi a2, t5, 0
+    jal  ra, apply_move
+    sb   t5, 30(t6)
+    sb   x0, 31(t6)
+    addi s11, s11, 1
+    j    IDDFS_allow_step_loop
+IDDFS_allow_step_loop_end:
+    addi t0, x0, 6
+    addi s9, s9, 1
+    bne  s9, t0, IDDFS_loop # ;allow_step <= 5;allow_step++
+# IDDFS_loop end
 
     j    exit
 
