@@ -217,6 +217,7 @@ static void solve(state_t *state)
     stack_entry_t stack[6];
     uint8_t sp;
     uint32_t rank = rank_state(state);
+    stack[0].step = MOVES;
     /* The step from a state 11 moves away to the one the search starts from,
      * or NULL if the search starts from the given state.
      */
@@ -234,11 +235,11 @@ static void solve(state_t *state)
         uint8_t step = get_eleven_step_first_move(eleven_step);
         first_step = step_names[step];
         apply_move(&stack[0].now_state, state, step);
+        stack[0].step = step;
     }
 
     for (uint8_t allow_step = 1;allow_step <= 5;allow_step++) {
         sp = 0;
-        stack[sp].step = MOVES;
         stack[sp].next_step = 0;
         while (!(sp == 0 && stack[sp].next_step == MOVES)) {
             if (sp == allow_step) {
