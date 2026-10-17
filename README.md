@@ -196,6 +196,16 @@ make IDDFS_solver_asm.elf IDDFS_solver.elf god_test
 ./ripes_compare.sh 10 100     # every 100th rank at distance 10, a few minutes
 ```
 
+`ripes_models.sh STATE...` solves each state on several processor models,
+by default `RV32_ISS` and the five-stage `RV32_5S` (`PROCS` sets others), and
+fails if any model gives a different output or exit code. Each run may take
+60 seconds, since the pipelined models are slower to simulate; `TIMEOUT`
+changes that. `ELF=IDDFS_solver.elf` checks the C image.
+
+```sh
+./ripes_models.sh 12345671111111 76542133222133 21345671111111
+```
+
 `ripes_state.sh IMAGE.elf STATE [OUT.elf]` does the writing: it replaces the
 string at the image's `input` symbol, in `OUT.elf` if given and otherwise in
 `IMAGE.elf` itself. `STATE` may be up to 14 characters and is not checked.
