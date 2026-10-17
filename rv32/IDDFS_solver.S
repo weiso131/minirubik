@@ -86,6 +86,7 @@ solve:
     sb   t0, 14(s10)  # stack[0].step = MOVES;
     addi a0, s10, 0
     jal  ra, rank_state
+    beq  a0, x0, exit
 
 search_eleven_step:
     addi a1, x0, 0 # l
