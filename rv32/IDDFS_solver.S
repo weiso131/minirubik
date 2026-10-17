@@ -160,7 +160,7 @@ search_eleven_step_neq:
 not_five_step:
 # start IDDFS
 
-    addi s9, x0, 1 # uint8_t allow_step = 1
+    addi s9, x0, 16 # uint8_t allow_step = 1
     la   s8, mod3_form
     addi s7, x0, 9 # s7: MOVES
 IDDFS_loop:
@@ -169,15 +169,13 @@ IDDFS_loop:
 IDDFS_allow_step_loop:
     bne  s11, s9, IDDFS_get_next_step
 IDDFS_check_if_solve:
-    slli a0, s11, 4
-    add  a0, a0, s10 # stack + sp
+    add  a0, s11, s10 # stack + sp
     jal  ra, rank_state
     jal  ra, search_five_step
     bge  a0, x0, print_solution # if (search_five_step(rank_state(&stack[sp].now_state)) >= 0)
 IDDFS_pop_stack_loop:
-    addi s11, s11, -1
-    slli t0, s11, 4
-    add  t0, t0, s10
+    addi s11, s11, -16
+    add  t0, s11, s10 # stack + sp
     lbu  t1, 15(t0)
     addi t1, t1, 1
     sb   t1, 15(t0) # stack[sp].next_step
@@ -191,8 +189,7 @@ IDDFS_check_allow_step_loop_end:
 IDDFS_get_next_step:
     # t5: next_step
     # t6: stack + sp
-    slli t6, s11, 4
-    add  t6, s10, t6 # stack + sp
+    add  t6, s10, s11 # stack + sp
     lbu  t5, 15(t6) # stack[sp].next_step
     lbu  t2, 14(t6) # stack[sp].step
     add  t1, t5, s8 # mod3_form + stack[sp].next_step
@@ -212,11 +209,11 @@ IDDFS_not_skip:
     jal  ra, apply_move
     sb   t5, 30(t6)
     sb   x0, 31(t6)
-    addi s11, s11, 1
+    addi s11, s11, 16
     j    IDDFS_allow_step_loop
 IDDFS_allow_step_loop_end:
-    addi t0, x0, 6
-    addi s9, s9, 1
+    addi t0, x0, 96
+    addi s9, s9, 16
     bne  s9, t0, IDDFS_loop # ;allow_step <= 5;allow_step++
 # IDDFS_loop end
 
@@ -230,7 +227,6 @@ print_solution:
     # step_names: s5
     # space   : s6
     la   s6, space
-    slli s11, s11, 4
     add  s1, s10, s11 # state_t *previous = &stack[sp].now_state;
     la   s4, five_step_first_move
     la   s5, step_names
