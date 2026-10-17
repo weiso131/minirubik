@@ -50,6 +50,15 @@ IDDFS_solver.elf: IDDFS_solver.c lookup_form.h lookup_form_generator \
 		-nostdlib -static -DRIPES -DSTATE='"$(RV32_STATE)"' -T rv32/link.ld \
 		rv32/start.S IDDFS_solver.c -x c - -o $@
 
+# The same build drawing every state on the Ripes LED matrix, for the GUI.
+# The Ripes command line has no LED matrix, and IDDFS_solver.elf is the one
+# measured.
+IDDFS_solver_led.elf: IDDFS_solver.c lookup_form.h lookup_form_generator \
+		rv32/start.S rv32/link.ld .rv32_state
+	./lookup_form_generator | $(RV32_CC) $(RV32_CFLAGS) -ffreestanding \
+		-nostdlib -static -DRIPES -DRENDER -DSTATE='"$(RV32_STATE)"' \
+		-T rv32/link.ld rv32/start.S IDDFS_solver.c -x c - -o $@
+
 # The hand-written assembly version. rv32/IDDFS_solver.S is the whole program
 # (it has its own _start); the only C linked in is the generated table. It
 # never uses sp, so it is linked without a stack.
@@ -141,4 +150,5 @@ endif
 
 clean:
 	$(RM) solver mini IDDFS_solver lookup_form_generator god_test \
-		IDDFS_solver.elf IDDFS_solver_asm.elf .rv32_state
+		IDDFS_solver.elf IDDFS_solver_led.elf IDDFS_solver_asm.elf \
+		.rv32_state

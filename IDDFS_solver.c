@@ -96,6 +96,61 @@ static void apply_move(state_t *to, const state_t *from, uint8_t move)
     }
 }
 
+/* With RENDER defined, the Ripes GUI build draws every state on the way to the
+ * solution on the LED matrix: the given one first, then one after each step
+ * printed. The images measured are built without it.
+ */
+#ifdef RENDER
+#ifndef RIPES
+#error "RENDER draws on the Ripes LED matrix, so it needs RIPES"
+#endif
+static volatile uint32_t *const led = (volatile uint32_t *) LED_BASE;
+static const uint8_t cube_pos[CUBIES][3] = {CUBE_POS_ROWS(C_ROW)};
+static const uint8_t face_bias[CUBIES][3][2] = {FACE_BIAS_ROWS(C_XY_ROW)};
+static const uint32_t colors[6] = {FACE_COLORS(C_WORD)};
+static const uint8_t fixed_corner[3][3] = {FIXED_CORNER_ROWS(C_ROW)};
+
+/* y * LED_WIDTH spelled out as 32 + 2 + 1, since RV32I cannot multiply. */
+#if LED_WIDTH != 35
+#error "fill() multiplies by 35"
+#endif
+static void fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t rgb)
+{
+    volatile uint32_t *row = led + x + (y << 5) + (y << 1) + y;
+    for (uint32_t j = 0; j < h; j++, row += LED_WIDTH)
+        for (uint32_t i = 0; i < w; i++)
+            row[i] = rgb;
+}
+
+static void draw_fixed_corner(void)
+{
+    fill(fixed_corner[0][0], fixed_corner[0][1], FACELET_SIZE, FACELET_SIZE,
+         colors[fixed_corner[0][2]]);
+    fill(fixed_corner[1][0], fixed_corner[1][1], FACELET_SIZE, FACELET_SIZE,
+         colors[fixed_corner[1][2]]);
+    fill(fixed_corner[2][0], fixed_corner[2][1], FACELET_SIZE, FACELET_SIZE,
+         colors[fixed_corner[2][2]]);
+}
+
+/* Facelet k of position i shows face (o + k) mod 3 of the cubie there. */
+static void draw_cube(const state_t *state)
+{
+    const uint8_t *tmp_p;
+    uint8_t tmp_o;
+
+    for (int i = 0; i < 7; i++) {
+        tmp_p = cube_pos[state->p[i]];
+        tmp_o = state->o[i];
+        fill(face_bias[i][0][0], face_bias[i][0][1], 3, 3, colors[tmp_p[mod3_form[tmp_o]]]);
+        fill(face_bias[i][1][0], face_bias[i][1][1], 3, 3, colors[tmp_p[mod3_form[tmp_o + 1]]]);
+        fill(face_bias[i][2][0], face_bias[i][2][1], 3, 3, colors[tmp_p[mod3_form[tmp_o + 2]]]);
+    }
+}
+#define DRAW_STATE(state) draw_cube(state)
+#else
+#define DRAW_STATE(state) ((void) 0)
+#endif
+
 static uint32_t rank_state(const state_t *state)
 {
     uint32_t p = 0, o = 0;
@@ -193,12 +248,14 @@ static void print_solution(const stack_entry_t *stack,
     if (first_step) {
         print_string(first_step);
         separator = " ";
+        DRAW_STATE(&stack[0].now_state);
     }
 
     for (uint8_t i = 1; i <= sp; ++i) {
         print_string(separator);
         print_string(step_names[stack[i].step]);
         separator = " ";
+        DRAW_STATE(&stack[i].now_state);
     }
     for (uint32_t rank = rank_state(&state); rank; rank = rank_state(&state)) {
         uint8_t step = get_five_step_first_move(search_five_step(rank));
@@ -208,6 +265,7 @@ static void print_solution(const stack_entry_t *stack,
         state_t previous;
         state_copy(&previous, &state);
         apply_move(&state, &previous, step);
+        DRAW_STATE(&state);
     }
     print_string("\n");
 }
@@ -290,7 +348,11 @@ int main(int argc, char **argv)
         print_usage(argc > 0 && argv[0] ? argv[0] : "solver");
         return 2;
     }
-    
+
+#ifdef RENDER
+    draw_fixed_corner();
+#endif
+    DRAW_STATE(&state);
     solve(&state);
 
     return output_failed();

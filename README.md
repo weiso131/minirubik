@@ -112,6 +112,14 @@ rebuilds the image. `rv32/link.ld` lays the image out, including a fixed
 512-byte stack, inside the assignment's 128 KiB budget for everything that is
 not code.
 
+`make IDDFS_solver_led.elf` builds the same program with `-DRENDER`, which
+draws the given state as an unfolded net on the Ripes LED matrix (35x25, at
+`0xf0000000`) and redraws it after every step printed. Load it in the Ripes
+GUI with *Load program... > Executable (ELF)*, with an LED matrix of that
+size added on the I/O tab. The command line has no LED matrix, and the image
+measured is `IDDFS_solver.elf`, built without the renderer; the two load the
+same program apart from it.
+
 `ripes_test.sh` runs an image on [Ripes](https://github.com/mortbopet/Ripes)
 in command-line mode and reports what it cost:
 
