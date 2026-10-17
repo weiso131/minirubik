@@ -186,6 +186,7 @@ IDDFS_pop_stack_loop:
     j    IDDFS_pop_stack_loop
 IDDFS_check_allow_step_loop_end:
     beq  s7, t1, IDDFS_allow_step_loop_end
+    /* no need jump to IDDFS_allow_step_loop because s11 < s9 here
     /* if (sp == 0 && stack[sp].next_step == MOVES) break */
 IDDFS_get_next_step:
     # t5: next_step
@@ -201,7 +202,9 @@ IDDFS_get_next_step:
     bne  t3, t4, IDDFS_not_skip
     addi t5, t5, 1
     sb   t5, 15(t6)
-    beq  t5, s7, IDDFS_pop_stack_loop
+    bne  t5, s7, IDDFS_not_skip
+    beq  s11, x0, IDDFS_allow_step_loop_end
+    j    IDDFS_pop_stack_loop
 IDDFS_not_skip:
     addi a0, t6, 16 # stack[sp + 1].now_state
     addi a1, t6, 0
