@@ -14,8 +14,10 @@ ENTRY(_start)
  * recursion, so its deepest call chain is fixed: 336 bytes, the sum of the
  * frames that -fstack-usage reports for main, print_solution and apply_move.
  * Nothing checks that at run time, so recompute it if those functions change.
+ * The assembly version never touches sp, so its build links with
+ * --defsym=STACK_SIZE=0 and gets no stack at all.
  */
-STACK_SIZE = 512;
+STACK_SIZE = DEFINED(STACK_SIZE) ? STACK_SIZE : 512;
 
 MEMORY
 {

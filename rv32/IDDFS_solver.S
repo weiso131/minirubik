@@ -21,7 +21,6 @@ _start:
     .option norelax
     la   gp, __global_pointer$
     .option pop
-    la   sp, __stack_top
 parse_state:
     la   t0, input
     addi t0, t0, 6
