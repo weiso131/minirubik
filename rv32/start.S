@@ -2,7 +2,8 @@
  *
  * There is no command line on the target, so the cube state is the string
  * assembled in below and handed to main() as argv[1]. The build overrides it
- * with -DSTATE='"..."'.
+ * with -DSTATE='"..."'. The string is at the symbol "input", as in
+ * rv32/IDDFS_solver.S, so that ripes_state.sh can replace it in the image.
  *
  * sp starts at the top of the .stack block that rv32/link.ld reserves.
  * .bss is not cleared: Ripes starts all memory out as zero.
@@ -31,8 +32,8 @@ _start:
     .section .rodata
     .balign 4
 argv:
-    .word program_name, state, 0
+    .word program_name, input, 0
 program_name:
     .asciz "IDDFS_solver"
-state:
+input:
     .asciz STATE

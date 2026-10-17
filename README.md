@@ -57,7 +57,7 @@ solution. Both formats are explained below.
 against a breadth-first table of optimal move counts:
 
 ```sh
-./god_test SOLVER [STEP [JOBS [MOVES]]]
+./god_test SOLVER [STEP [JOBS [MOVES [LEAST]]]]
 make god_check                 # ./god_test ./IDDFS_solver, all states
 make god_check GOD_STEP=1000   # every 1000th state, well under a second
 ```
@@ -72,6 +72,9 @@ make god_check GOD_STEP=1000   # every 1000th state, well under a second
   totals to the parent through a pipe when it is done.
 - `MOVES` tests only the states whose optimal solution has at most `MOVES`
   moves. The default, 11, covers all of them.
+- `LEAST` tests only the states whose optimal solution has at least `LEAST`
+  moves, by default 1. `MOVES` and `LEAST` both 11 tests the distance-11
+  states alone.
 
 The solved state is never tested; it is not an input a solver has to handle.
 
@@ -158,17 +161,46 @@ wrote, once the run is over. Its exit status is the program's exit code, or
   directory.
 - `PROC`: the processor model, by default `RV32_ISS`.
 - `TIMEOUT`: how long a run may take, by default 10 seconds.
+- `IRET_LOG`: if set, each run that ends appends `STATE INSTRUCTIONS`, the
+  instructions it retired, to this file.
 
 Each run starts Ripes once, about 0.2 s, so the 12,223 states within 5 moves
 take about 2.5 minutes with 20 jobs. Each run also gets a Ripes settings
 directory of its own: runs that share `~/.config/Ripes` wait for each other's
 lock on it and end up timing out.
 
+`ripes_iret.sh [MOVES [STEP [JOBS]]]` checks the states at exactly `MOVES`
+moves this way (by default 11, every one, one job per processor) and then
+reports the fewest, mean and most instructions retired on them, with the
+costliest states. `LOG=FILE` keeps the count of every state. All 2,644
+distance-11 states take about 46 seconds with 20 jobs:
+
+```sh
+./ripes_iret.sh               # every distance-11 state
+./ripes_iret.sh 10 100        # every 100th rank among the distance-10 states
+```
+
+`ripes_compare.sh [MOVES [STEP [JOBS]]]` runs `ripes_iret.sh` on the
+assembly image and then on the C image over the same states, and pairs the
+two counts of each state: how many states the assembly is not faster on, the
+ratio of the totals, the range of the per-state ratio and saving, and the
+costliest state of each. It first prints the commit (`-dirty` if the tree has
+uncommitted changes) and the Ripes build, so build both images from a clean
+tree to get numbers that can be reproduced. `LOGDIR=DIR` keeps the per-state
+counts in `DIR/asm-MOVES-STEP.log` and `DIR/c-MOVES-STEP.log`; `ASM_ELF` and
+`C_ELF` name other images.
+
+```sh
+make IDDFS_solver_asm.elf IDDFS_solver.elf god_test
+./ripes_compare.sh            # every distance-11 state, about 1.5 minutes
+./ripes_compare.sh 10 100     # every 100th rank at distance 10, a few minutes
+```
+
 `ripes_state.sh IMAGE.elf STATE [OUT.elf]` does the writing: it replaces the
 string at the image's `input` symbol, in `OUT.elf` if given and otherwise in
-`IMAGE.elf` itself. `STATE` may be up to 14 characters and is not checked. The
-C image `IDDFS_solver.elf` has no `input` symbol, so this works only for the
-assembly image.
+`IMAGE.elf` itself. `STATE` may be up to 14 characters and is not checked.
+Both `IDDFS_solver_asm.elf` and the C image `IDDFS_solver.elf` have that
+symbol, so `ELF=IDDFS_solver.elf` checks the C image the same way.
 
 ### Reading the 14-digit input
 

@@ -20,6 +20,8 @@ Environment:
              this script)
   PROC       processor model (default: RV32_ISS)
   TIMEOUT    stop the run after this long, e.g. 10 or 2m (default: 10)
+  IRET_LOG   append "STATE INSTRUCTIONS" to this file, the instructions
+             the run retired, if it ran to the end
 
 Exit status: the image's own exit code, 124 if TIMEOUT ran out, 1 if Ripes
 produced no result, 2 for a usage error.
@@ -59,13 +61,19 @@ copy=$work/image.elf
 # settings directory of its own instead. Ripes also pads what the program
 # prints with NUL bytes.
 output=$(XDG_CONFIG_HOME=$work timeout "${TIMEOUT:-10}" "$ripes" --mode cli \
-    --src "$copy" -t elf --proc "$proc" 2>/dev/null | tr -d '\000')
+    --src "$copy" -t elf --proc "$proc" --iret 2>/dev/null | tr -d '\000')
 code=$(printf '%s\n' "$output" | sed -n 's/^Program exited with code: //p')
 if [ -z "$code" ]; then
     # Ripes prints that line whenever the program ends, so without it the
     # run was cut short.
     printf '%s\n' "$output"
     exit 124
+fi
+# The count is on the line after the one that names it. A line this short
+# is appended in one write, so parallel runs can share the log.
+if [ -n "${IRET_LOG-}" ]; then
+    iret=$(printf '%s\n' "$output" | sed -n '/instructions retired/{n;p;}')
+    printf '%s %s\n' "$1" "$iret" >>"$IRET_LOG"
 fi
 
 # What the program wrote is everything before the line Ripes adds on exit.
